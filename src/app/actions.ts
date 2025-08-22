@@ -33,7 +33,9 @@ export async function registerUser(formData: FormData) {
   const ownerExists = users.some(
     (u) => u.flatNumber === flatNumber && u.role === 'owner' && u.status === 'approved'
   );
-  if (ownerExists) {
+
+  // If trying to register as an owner and one already exists for the flat
+  if (role === 'owner' && ownerExists) {
     redirect('/register?error=flat_already_has_owner');
     return;
   }
@@ -42,10 +44,13 @@ export async function registerUser(formData: FormData) {
   const tenantExists = users.some(
     (u) => u.flatNumber === flatNumber && u.role === 'tenant' && u.status === 'approved'
   );
-  if (tenantExists) {
+  
+  // If trying to register as a tenant and one already exists for the flat
+  if (role === 'tenant' && tenantExists) {
     redirect('/register?error=flat_already_has_tenant');
     return;
   }
+
 
   // Add user to pending list
   users.push({
