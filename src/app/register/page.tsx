@@ -26,6 +26,7 @@ import { Home, KeyRound, Mail, User } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useEffect } from 'react';
+import { useFormState } from 'react-dom';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -43,29 +44,10 @@ export default function RegisterPage() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (searchParams.get('success')) {
-      toast({
-        title: 'Registration Submitted',
-        description: 'Your registration is pending admin approval.',
-      });
-    }
-    const error = searchParams.get('error');
-    if (error) {
-      let description = 'An unknown error occurred.';
-      if (error === 'flat_already_has_owner')
-        description = 'This flat already has an approved owner.';
-      if (error === 'flat_already_has_tenant')
-        description = 'This flat already has an approved tenant.';
-      if (error === 'validation_failed')
-        description = 'Please check your inputs and try again.';
-      toast({
-        variant: 'destructive',
-        title: 'Registration Failed',
-        description,
-      });
-    }
-  }, [searchParams, toast]);
+  const [formState, formAction] = useFormState(registerUser, {
+    success: false,
+    errors: {},
+  });
 
   const form = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
@@ -78,13 +60,44 @@ export default function RegisterPage() {
     },
   });
 
+  useEffect(() => {
+    if (searchParams.get('success')) {
+      toast({
+        title: 'Registration Submitted',
+        description: 'Your registration is pending admin approval.',
+      });
+      form.reset();
+    }
+  }, [searchParams, toast, form]);
+
+  useEffect(() => {
+    if (!formState.success && formState.errors) {
+      Object.entries(formState.errors).forEach(([key, value]) => {
+        if (value) {
+            form.setError(key as keyof z.infer<typeof registerSchema>, {
+                type: 'manual',
+                message: value[0],
+            });
+        }
+      });
+    }
+    if (!formState.success && formState.message) {
+      toast({
+        variant: 'destructive',
+        title: 'Registration Failed',
+        description: formState.message,
+      });
+    }
+  }, [formState, form, toast]);
+
+
   return (
     <AuthFormWrapper
       title="Create Account"
       description="Join the SocietyConnect community"
     >
       <Form {...form}>
-        <form action={registerUser} className="space-y-6">
+        <form action={formAction} className="space-y-6">
           <div className="space-y-4">
             <FormField
               control={form.control}
@@ -129,7 +142,7 @@ export default function RegisterPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Role</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} name={field.name}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select your role" />

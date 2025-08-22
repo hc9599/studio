@@ -9,22 +9,24 @@ import type { Visit } from '@/lib/types';
 import { generateGatePass } from '@/ai/flows/gatePass';
 
 const registerSchema = z.object({
-  name: z.string().min(3, 'Name is too short'),
-  email: z.string().email(),
-  flatNumber: z.string().min(1, 'Flat number is required'),
+  name: z.string().min(3, 'Name must be at least 3 characters.'),
+  email: z.string().email({ message: 'Invalid email address.' }),
+  flatNumber: z.string().min(1, { message: 'Flat number is required.' }),
   role: z.enum(['owner', 'tenant']),
-  password: z.string().min(6, 'Password is too short'),
+  password: z
+    .string()
+    .min(6, { message: 'Password must be at least 6 characters.' }),
 });
 
-export async function registerUser(formData: FormData) {
+export async function registerUser(prevState: any, formData: FormData) {
   const data = Object.fromEntries(formData.entries());
   const parsed = registerSchema.safeParse(data);
 
   if (!parsed.success) {
-    // In a real app, you'd return error messages to the form.
-    console.error('Validation failed:', parsed.error.flatten().fieldErrors);
-    redirect('/register?error=validation_failed');
-    return;
+    return {
+      success: false,
+      errors: parsed.error.flatten().fieldErrors,
+    };
   }
 
   const { name, email, flatNumber, role, password } = parsed.data;
@@ -36,8 +38,10 @@ export async function registerUser(formData: FormData) {
 
   // If trying to register as an owner and one already exists for the flat
   if (role === 'owner' && ownerExists) {
-    redirect('/register?error=flat_already_has_owner');
-    return;
+     return {
+      success: false,
+      message: 'This flat already has an approved owner.',
+    };
   }
 
   // Check if flat already has a tenant (only block if registering a new tenant)
@@ -47,8 +51,10 @@ export async function registerUser(formData: FormData) {
   
   // If trying to register as a tenant and one already exists for the flat
   if (role === 'tenant' && tenantExists) {
-    redirect('/register?error=flat_already_has_tenant');
-    return;
+     return {
+      success: false,
+      message: 'This flat already has an approved tenant.',
+    };
   }
 
 
