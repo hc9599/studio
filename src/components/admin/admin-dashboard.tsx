@@ -267,7 +267,7 @@ export function AdminDashboard() {
                       <TableCell>{visit.visitorType}</TableCell>
                       <TableCell>{visit.flatNumber}</TableCell>
                       <TableCell>
-                        {visit.entryTime.toLocaleTimeString()}
+                        {new Date(visit.entryTime).toLocaleTimeString()}
                       </TableCell>
                       <TableCell className="text-right">
                         <Button
