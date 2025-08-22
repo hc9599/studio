@@ -54,11 +54,12 @@ export default function LoginPage() {
     }
   }, [formState, toast]);
 
+  // This is the correct way to handle form submission with react-hook-form and server actions.
   const onSubmit = (data: z.infer<typeof loginSchema>) => {
     const formData = new FormData();
-    Object.entries(data).forEach(([key, value]) => {
-      formData.append(key, value);
-    });
+    for (const key in data) {
+      formData.append(key, data[key as keyof typeof data]);
+    }
     formAction(formData);
   };
 
@@ -69,6 +70,8 @@ export default function LoginPage() {
     >
       <Form {...form}>
         <form
+          // The `onSubmit` from react-hook-form handles everything.
+          // No `action` prop is needed here.
           onSubmit={form.handleSubmit(onSubmit)}
           className="space-y-6"
         >
