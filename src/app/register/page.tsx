@@ -22,12 +22,13 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Home, KeyRound, Mail, User } from 'lucide-react';
+import { Home, KeyRound, Mail, User, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 import { useActionState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const registerSchema = z.object({
   name: z.string().min(3, { message: 'Name must be at least 3 characters.' }),
@@ -40,10 +41,9 @@ const registerSchema = z.object({
 });
 
 export default function RegisterPage() {
-  const searchParams = useSearchParams();
   const { toast } = useToast();
 
-  const [formState, formAction] = useActionState(registerUser, {
+  const [formState, formAction, isPending] = useActionState(registerUser, {
     success: false,
     errors: {},
     message: '',
@@ -61,17 +61,9 @@ export default function RegisterPage() {
   });
 
   useEffect(() => {
-    if (searchParams.get('success')) {
-      toast({
-        title: 'Registration Submitted',
-        description: 'Your registration is pending admin approval.',
-      });
-      form.reset();
-    }
-  }, [searchParams, toast, form]);
-
-  useEffect(() => {
-    if (!formState.success && formState.errors) {
+    if (formState.success && formState.pendingUser) {
+        form.reset();
+    } else if (!formState.success && formState.errors) {
       Object.entries(formState.errors).forEach(([key, value]) => {
         if (value) {
             form.setError(key as keyof z.infer<typeof registerSchema>, {
@@ -89,6 +81,40 @@ export default function RegisterPage() {
       });
     }
   }, [formState, form, toast]);
+
+
+  if(formState.success && formState.pendingUser) {
+    return (
+      <AuthFormWrapper
+        title="Registration Submitted"
+        description="Your registration is now pending admin approval."
+      >
+        <Alert variant="default" className="bg-green-50 border-green-200">
+            <CheckCircle className="h-4 w-4 text-green-600" />
+            <AlertTitle className="text-green-800">Success!</AlertTitle>
+            <AlertDescription className="text-green-700">
+                Your request has been sent to the admin.
+            </AlertDescription>
+        </Alert>
+
+        <Card className="mt-6">
+            <CardHeader>
+                <CardTitle className="text-lg">Your Submitted Details</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm space-y-2">
+                <p><strong>Name:</strong> {formState.pendingUser.name}</p>
+                <p><strong>Email:</strong> {formState.pendingUser.email}</p>
+                <p><strong>Flat:</strong> {formState.pendingUser.flatNumber}</p>
+                <p><strong>Role:</strong> {formState.pendingUser.role}</p>
+            </CardContent>
+        </Card>
+        
+        <Button asChild className="w-full mt-6">
+            <Link href="/">Back to Login</Link>
+        </Button>
+      </AuthFormWrapper>
+    )
+  }
 
 
   return (
@@ -195,8 +221,8 @@ export default function RegisterPage() {
               )}
             />
           </div>
-          <Button type="submit" className="w-full">
-            Register
+          <Button type="submit" className="w-full" disabled={isPending}>
+            {isPending ? 'Registering...' : 'Register'}
           </Button>
         </form>
       </Form>

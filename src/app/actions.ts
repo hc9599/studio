@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { users, visits } from '@/lib/data';
-import type { Visit } from '@/lib/types';
+import type { User, Visit } from '@/lib/types';
 import { generateGatePass } from '@/ai/flows/gatePass';
 
 const registerSchema = z.object({
@@ -59,23 +59,28 @@ export async function registerUser(prevState: any, formData: FormData) {
 
 
   // Add user to pending list
-  users.push({
+  const newUser = {
     id: `user-${Date.now()}`,
     name,
     email,
     flatNumber,
     role,
     passwordHash: password, // In a real app, hash this password
-    status: 'pending',
-  });
+    status: 'pending' as const,
+  };
+  users.push(newUser);
+
 
   revalidatePath('/admin');
-  redirect('/register?success=true');
+  return {
+    success: true,
+    pendingUser: newUser
+  }
 }
 
 const loginSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(1, 'Password is required.'),
+  password: z.string().min(6, 'Password is required.'),
 });
 
 export async function loginUser(formData: FormData) {
