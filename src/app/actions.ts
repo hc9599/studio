@@ -4,9 +4,23 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
-import { users, visits } from '@/lib/data';
+import db from '@/lib/db';
 import type { User, Visit } from '@/lib/types';
 import { generateGatePass } from '@/ai/flows/gatePass';
+
+// Helper function to find user by email
+function findUserByEmail(email: string): User | undefined {
+  const stmt = db.prepare('SELECT * FROM users WHERE email = ?');
+  const user = stmt.get(email) as User | undefined;
+  return user;
+}
+
+// Helper function to find user by ID
+function findUserById(id: string): User | undefined {
+    const stmt = db.prepare('SELECT * FROM users WHERE id = ?');
+    const user = stmt.get(id) as User | undefined;
+    return user;
+}
 
 const registerSchema = z.object({
   name: z.string().min(3, { message: 'Name must be at least 3 characters.' }),
@@ -31,12 +45,10 @@ export async function registerUser(prevState: any, formData: FormData) {
 
   const { name, email, flatNumber, role, password } = parsed.data;
 
-  // Check if flat is already registered by an owner
-  const ownerExists = users.some(
-    (u) => u.flatNumber === flatNumber && u.role === 'owner' && u.status === 'approved'
-  );
+  // Check if owner exists for the flat
+  const ownerStmt = db.prepare("SELECT * FROM users WHERE flatNumber = ? AND role = 'owner' AND status = 'approved'");
+  const ownerExists = ownerStmt.get(flatNumber);
 
-  // If trying to register as an owner and one already exists for the flat
   if (role === 'owner' && ownerExists) {
      return {
       success: false,
@@ -44,12 +56,10 @@ export async function registerUser(prevState: any, formData: FormData) {
     };
   }
 
-  // Check if flat already has a tenant (only block if registering a new tenant)
-  const tenantExists = users.some(
-    (u) => u.flatNumber === flatNumber && u.role === 'tenant' && u.status === 'approved'
-  );
-  
-  // If trying to register as a tenant and one already exists for the flat
+  // Check if tenant exists for the flat
+  const tenantStmt = db.prepare("SELECT * FROM users WHERE flatNumber = ? AND role = 'tenant' AND status = 'approved'");
+  const tenantExists = tenantStmt.get(flatNumber);
+
   if (role === 'tenant' && tenantExists) {
      return {
       success: false,
@@ -57,19 +67,21 @@ export async function registerUser(prevState: any, formData: FormData) {
     };
   }
 
-
-  // Add user to pending list
-  const newUser = {
+  const newUser: User = {
     id: `user-${Date.now()}`,
     name,
     email,
     flatNumber,
     role,
     passwordHash: password, // In a real app, hash this password
-    status: 'pending' as const,
+    status: 'pending',
   };
-  users.push(newUser);
 
+  const insertStmt = db.prepare(`
+    INSERT INTO users (id, name, email, flatNumber, role, status, passwordHash)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+  insertStmt.run(newUser.id, newUser.name, newUser.email, newUser.flatNumber, newUser.role, newUser.status, newUser.passwordHash);
 
   revalidatePath('/admin');
   return {
@@ -94,9 +106,9 @@ export async function loginUser(formData: FormData) {
 
   const { email, password } = parsed.data;
 
-  const user = users.find((u) => u.email === email && u.passwordHash === password && u.status === 'approved');
+  const user = findUserByEmail(email);
 
-  if (!user) {
+  if (!user || user.passwordHash !== password || user.status !== 'approved') {
     redirect('/?error=invalid_credentials');
     return;
   }
@@ -110,18 +122,14 @@ export async function loginUser(formData: FormData) {
 }
 
 export async function approveRegistration(userId: string) {
-  const user = users.find((u) => u.id === userId);
-  if (user) {
-    user.status = 'approved';
-  }
+  const stmt = db.prepare("UPDATE users SET status = 'approved' WHERE id = ?");
+  stmt.run(userId);
   revalidatePath('/admin');
 }
 
 export async function rejectRegistration(userId: string) {
-  const user = users.find((u) => u.id === userId);
-  if (user) {
-    user.status = 'rejected';
-  }
+  const stmt = db.prepare("UPDATE users SET status = 'rejected' WHERE id = ?");
+  stmt.run(userId);
   revalidatePath('/admin');
 }
 
@@ -140,25 +148,27 @@ export async function logEntry(formData: FormData) {
         return { error: 'Validation failed' };
     }
 
-    const newVisit: Visit = {
+    const newVisit: Omit<Visit, 'entryTime'> & {entryTime: string} = {
         id: `visit-${Date.now()}`,
         ...parsed.data,
-        entryTime: new Date(),
+        entryTime: new Date().toISOString(),
         status: 'Inside',
         approvedBy: 'admin-001', // Assume admin is logging
     };
-    visits.unshift(newVisit);
+    const stmt = db.prepare(`
+        INSERT INTO visits (id, visitorName, visitorType, flatNumber, entryTime, status, approvedBy)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+    stmt.run(newVisit.id, newVisit.visitorName, newVisit.visitorType, newVisit.flatNumber, newVisit.entryTime, newVisit.status, newVisit.approvedBy);
+
     revalidatePath('/admin');
     return { success: true };
 }
 
 
 export async function markAsExited(visitId: string) {
-  const visit = visits.find((v) => v.id === visitId);
-  if (visit) {
-    visit.status = 'Exited';
-    visit.exitTime = new Date();
-  }
+  const stmt = db.prepare("UPDATE visits SET status = 'Exited', exitTime = ? WHERE id = ?");
+  stmt.run(new Date().toISOString(), visitId);
   revalidatePath('/admin');
   revalidatePath('/dashboard');
 }
@@ -177,8 +187,14 @@ export async function preApproveGuest(formData: FormData) {
         return { error: 'Validation failed' };
     }
 
-    // This would be the logged-in user in a real app
-    const resident = users.find(u => u.status === 'approved' && u.role !== 'owner' && u.email.includes('jane'))!; 
+    // This would be the logged-in user in a real app.
+    // We'll fake it by finding the first approved tenant.
+    const residentStmt = db.prepare("SELECT * FROM users WHERE status = 'approved' AND role = 'tenant' LIMIT 1");
+    const resident = residentStmt.get() as User | undefined;
+    
+    if (!resident) {
+        return { error: 'Could not find a resident to approve for.' };
+    }
 
     try {
         const gatePassData = await generateGatePass({
@@ -186,17 +202,22 @@ export async function preApproveGuest(formData: FormData) {
             flatNumber: resident.flatNumber,
         });
 
-        const newVisit: Visit = {
+        const newVisit: Omit<Visit, 'entryTime'> & {entryTime: string} = {
             id: `visit-${Date.now()}`,
             visitorName: parsed.data.guestName,
             visitorType: 'Guest',
             flatNumber: resident.flatNumber,
-            entryTime: new Date(),
+            entryTime: new Date().toISOString(),
             status: 'Pre-Approved',
             gatePassCode: gatePassData.qrData,
             approvedBy: resident.id,
         };
-        visits.unshift(newVisit);
+        const stmt = db.prepare(`
+            INSERT INTO visits (id, visitorName, visitorType, flatNumber, entryTime, status, gatePassCode, approvedBy)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        stmt.run(newVisit.id, newVisit.visitorName, newVisit.visitorType, newVisit.flatNumber, newVisit.entryTime, newVisit.status, newVisit.gatePassCode, newVisit.approvedBy);
+
 
         revalidatePath('/dashboard');
         return { success: true, gatePass: { ...gatePassData, visitorName: parsed.data.guestName, flatNumber: resident.flatNumber } };
@@ -204,4 +225,23 @@ export async function preApproveGuest(formData: FormData) {
         console.error("AI Flow failed:", error);
         return { error: 'Failed to generate gate pass.' };
     }
+}
+
+
+export async function getPendingUsers(): Promise<User[]> {
+    const stmt = db.prepare("SELECT * FROM users WHERE status = 'pending'");
+    return stmt.all() as User[];
+}
+
+export async function getLiveVisits(): Promise<Visit[]> {
+    const stmt = db.prepare("SELECT * FROM visits WHERE status = 'Inside'");
+    const visits = stmt.all() as any[];
+    return visits.map(v => ({ ...v, entryTime: new Date(v.entryTime) }));
+}
+
+export async function getMyVisits(): Promise<Visit[]> {
+    // Faking logged in user 'user-002'
+    const stmt = db.prepare("SELECT * FROM visits WHERE approvedBy = 'user-002'");
+    const visits = stmt.all() as any[];
+    return visits.map(v => ({ ...v, entryTime: new Date(v.entryTime) }));
 }

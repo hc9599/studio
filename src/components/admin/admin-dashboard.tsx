@@ -1,7 +1,7 @@
 
 'use client';
 
-import { approveRegistration, logEntry, markAsExited, rejectRegistration } from '@/app/actions';
+import { approveRegistration, getLiveVisits, getPendingUsers, logEntry, markAsExited, rejectRegistration } from '@/app/actions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -44,11 +44,10 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { users, visits } from '@/lib/data';
 import type { User, Visit } from '@/lib/types';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CheckCircle, PlusCircle, UserPlus, XCircle, UserCheck } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -70,8 +69,14 @@ export function AdminDashboard() {
     },
   });
 
-  const pendingUsers = users.filter((user) => user.status === 'pending');
-  const liveVisits = visits.filter((visit) => visit.status === 'Inside');
+  const [pendingUsers, setPendingUsers] = useState<User[]>([]);
+  const [liveVisits, setLiveVisits] = useState<Visit[]>([]);
+
+  useEffect(() => {
+    getPendingUsers().then(setPendingUsers);
+    getLiveVisits().then(setLiveVisits);
+  }, []);
+  
 
   async function handleLogEntry(data: z.infer<typeof logEntrySchema>) {
     const formData = new FormData();
@@ -81,11 +86,30 @@ export function AdminDashboard() {
     const result = await logEntry(formData);
     if(result?.success){
       toast({ title: 'Success', description: 'Entry logged successfully.' });
+      getLiveVisits().then(setLiveVisits);
       form.reset();
       setOpen(false);
     } else {
       toast({ variant: 'destructive', title: 'Error', description: result?.error || 'Failed to log entry.' });
     }
+  }
+
+  async function handleApprove(userId: string) {
+    await approveRegistration(userId);
+    setPendingUsers(users => users.filter(u => u.id !== userId));
+    toast({ title: 'Success', description: 'User approved.' });
+  }
+
+  async function handleReject(userId: string) {
+      await rejectRegistration(userId);
+      setPendingUsers(users => users.filter(u => u.id !== userId));
+      toast({ title: 'Success', description: 'User rejected.' });
+  }
+
+  async function handleMarkAsExited(visitId: string) {
+      await markAsExited(visitId);
+      setLiveVisits(visits => visits.filter(v => v.id !== visitId));
+      toast({ title: 'Success', description: 'Visitor marked as exited.' });
   }
 
   return (
@@ -94,11 +118,11 @@ export function AdminDashboard() {
         <TabsList>
           <TabsTrigger value="approvals">
             <UserPlus className="w-4 h-4 mr-2" />
-            Pending Approvals
+            Pending Approvals ({pendingUsers.length})
           </TabsTrigger>
           <TabsTrigger value="log">
             <UserCheck className="w-4 h-4 mr-2" />
-            Entry Log
+            Entry Log ({liveVisits.length})
           </TabsTrigger>
         </TabsList>
 
@@ -185,7 +209,7 @@ export function AdminDashboard() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => approveRegistration(user.id)}
+                          onClick={() => handleApprove(user.id)}
                         >
                           <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
                           Approve
@@ -193,7 +217,7 @@ export function AdminDashboard() {
                         <Button
                           size="sm"
                           variant="destructive"
-                          onClick={() => rejectRegistration(user.id)}
+                          onClick={() => handleReject(user.id)}
                         >
                            <XCircle className="h-4 w-4 mr-2" />
                           Reject
@@ -248,7 +272,7 @@ export function AdminDashboard() {
                       <TableCell className="text-right">
                         <Button
                           size="sm"
-                          onClick={() => markAsExited(visit.id)}
+                          onClick={() => handleMarkAsExited(visit.id)}
                         >
                           Mark as Exited
                         </Button>

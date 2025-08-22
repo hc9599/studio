@@ -1,7 +1,7 @@
 
 'use client';
 
-import { preApproveGuest } from '@/app/actions';
+import { getMyVisits, preApproveGuest } from '@/app/actions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -30,11 +30,10 @@ import {
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { visits } from '@/lib/data';
 import type { Visit } from '@/lib/types';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Ticket, UserPlus } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { GatePassDialog } from './gate-pass-dialog';
@@ -53,8 +52,11 @@ export function ResidentDashboard() {
   const [gatePassData, setGatePassData] = useState<GatePassData | null>(null);
   const { toast } = useToast();
   
-  // This would be the logged-in user in a real app
-  const myVisits = visits.filter(v => v.approvedBy === 'user-002');
+  const [myVisits, setMyVisits] = useState<Visit[]>([]);
+
+  useEffect(() => {
+    getMyVisits().then(setMyVisits);
+  }, []);
 
   const form = useForm<z.infer<typeof preApproveSchema>>({
     resolver: zodResolver(preApproveSchema),
@@ -75,6 +77,7 @@ export function ResidentDashboard() {
     if (result.success && result.gatePass) {
         toast({ title: 'Success', description: 'Gate pass generated successfully!' });
         setGatePassData(result.gatePass as GatePassData);
+        getMyVisits().then(setMyVisits);
         form.reset();
     } else {
         toast({ variant: 'destructive', title: 'Error', description: result.error || 'Failed to generate gate pass.' });
@@ -162,8 +165,8 @@ export function ResidentDashboard() {
                                                 visit.status === 'Pre-Approved' ? 'default' : 'secondary'
                                             } className={visit.status === 'Inside' ? 'bg-green-500 hover:bg-green-600' : ''}>{visit.status}</Badge>
                                         </TableCell>
-                                        <TableCell>{visit.entryTime.toLocaleDateString()}</TableCell>
-                                        <TableCell>{visit.status !== "Pre-Approved" ? visit.entryTime.toLocaleTimeString() : '-'}</TableCell>
+                                        <TableCell>{new Date(visit.entryTime).toLocaleDateString()}</TableCell>
+                                        <TableCell>{visit.status !== "Pre-Approved" ? new Date(visit.entryTime).toLocaleTimeString() : '-'}</TableCell>
                                         <TableCell>
                                             {visit.gatePassCode ? (
                                                 <Button variant="ghost" size="sm">
