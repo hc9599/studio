@@ -32,12 +32,11 @@ const gatePassFlow = ai.defineFlow(
       prompt,
       model: 'googleai/gemini-2.0-flash',
       output: {
-        format: 'json',
         schema: gatePassSchema,
       },
     });
 
-    const output = llmResponse.output();
+    const output = llmResponse.output;
     if (!output) {
       throw new Error('Failed to generate gate pass from AI.');
     }
