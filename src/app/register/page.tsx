@@ -47,6 +47,7 @@ export default function RegisterPage() {
     success: false,
     errors: {},
     message: '',
+    pendingUser: undefined
   });
 
   const form = useForm<z.infer<typeof registerSchema>>({
@@ -123,7 +124,13 @@ export default function RegisterPage() {
       description="Join the SocietyConnect community"
     >
       <Form {...form}>
-        <form action={formAction} className="space-y-6">
+        <form onSubmit={form.handleSubmit((data) => {
+          const formData = new FormData();
+          Object.entries(data).forEach(([key, value]) => {
+            formData.append(key, value);
+          });
+          formAction(formData);
+        })} className="space-y-6">
           <div className="space-y-4">
             <FormField
               control={form.control}
