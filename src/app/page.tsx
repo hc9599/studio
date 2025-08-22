@@ -45,7 +45,7 @@ export default function LoginPage() {
   });
 
   useEffect(() => {
-    if (!formState.success && formState.message) {
+    if (formState && !formState.success && formState.message) {
       toast({
         variant: 'destructive',
         title: 'Login Failed',
@@ -54,15 +54,6 @@ export default function LoginPage() {
     }
   }, [formState, toast]);
 
-  // This is the correct way to handle form submission with react-hook-form and server actions.
-  const onSubmit = (data: z.infer<typeof loginSchema>) => {
-    const formData = new FormData();
-    for (const key in data) {
-      formData.append(key, data[key as keyof typeof data]);
-    }
-    formAction(formData);
-  };
-
   return (
     <AuthFormWrapper
       title="SocietyConnect"
@@ -70,7 +61,7 @@ export default function LoginPage() {
     >
       <Form {...form}>
         <form
-          onSubmit={form.handleSubmit(onSubmit)}
+          action={formAction}
           className="space-y-6"
         >
           <div className="space-y-4">

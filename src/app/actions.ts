@@ -104,6 +104,7 @@ export async function loginUser(prevState: any, formData: FormData) {
   if (!parsed.success) {
     return {
         success: false,
+        message: 'Invalid data provided.',
         errors: parsed.error.flatten().fieldErrors,
     };
   }
@@ -126,7 +127,6 @@ export async function loginUser(prevState: any, formData: FormData) {
     };
   }
   
-  // Fake session by redirecting. In a real app, use cookies/sessions.
   if (user.email === 'admin@society.com') {
     redirect('/admin');
   } else {
