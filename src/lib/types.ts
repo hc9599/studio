@@ -17,12 +17,12 @@ export type Visit = {
   visitorName: string;
   visitorType: 'Guest' | 'Delivery' | 'Other';
   flatNumber: string;
-  entryTime: Date;
-  exitTime?: Date;
+  entryTime: string;
+  exitTime?: string;
   status: 'Inside' | 'Exited' | 'Pre-Approved';
   gatePassCode?: string;
   approvedBy: string; // User ID
-  gatePassExpiresAt?: Date;
+  gatePassExpiresAt?: string;
 };
 
 export const gatePassSchema = z.object({

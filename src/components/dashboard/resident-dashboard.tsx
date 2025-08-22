@@ -55,7 +55,7 @@ export function ResidentDashboard() {
   const [myVisits, setMyVisits] = useState<Visit[]>([]);
 
   const fetchVisits = () => {
-    getMyVisits().then(setMyVisits);
+    getMyVisits().then((data) => setMyVisits(data as any[]));
   }
 
   useEffect(() => {
@@ -102,7 +102,7 @@ export function ResidentDashboard() {
         instructions: "Show this pass at the gate for entry.", // Generic instruction for re-share
         visitorName: visit.visitorName,
         flatNumber: visit.flatNumber,
-        validUntil: visit.gatePassExpiresAt?.toISOString(),
+        validUntil: visit.gatePassExpiresAt?.toString(),
     };
     setGatePassData(passData);
   }

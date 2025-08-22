@@ -74,7 +74,7 @@ export function AdminDashboard() {
 
   useEffect(() => {
     getPendingUsers().then(setPendingUsers);
-    getLiveVisits().then(setLiveVisits);
+    getLiveVisits().then((data) => setLiveVisits(data as any[]));
   }, []);
   
 
@@ -86,7 +86,7 @@ export function AdminDashboard() {
     const result = await logEntry(formData);
     if(result?.success){
       toast({ title: 'Success', description: 'Entry logged successfully.' });
-      getLiveVisits().then(setLiveVisits);
+      getLiveVisits().then((data) => setLiveVisits(data as any[]));
       form.reset();
       setOpen(false);
     } else {

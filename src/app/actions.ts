@@ -283,7 +283,7 @@ export async function getPendingUsers(): Promise<User[]> {
 export async function getLiveVisits(): Promise<Visit[]> {
     const stmt = db.prepare("SELECT * FROM visits WHERE status = 'Inside'");
     const visits = stmt.all() as any[];
-    return visits.map(v => ({ ...v, entryTime: new Date(v.entryTime) }));
+    return visits.map(v => ({ ...v, entryTime: new Date(v.entryTime).toISOString() }));
 }
 
 export async function getMyVisits(): Promise<Visit[]> {
@@ -294,5 +294,5 @@ export async function getMyVisits(): Promise<Visit[]> {
 
     const stmt = db.prepare("SELECT * FROM visits WHERE approvedBy = ? ORDER BY entryTime DESC");
     const visits = stmt.all(resident.id) as any[];
-    return visits.map(v => ({ ...v, entryTime: new Date(v.entryTime), gatePassExpiresAt: v.gatePassExpiresAt ? new Date(v.gatePassExpiresAt) : undefined }));
+    return visits.map(v => ({ ...v, entryTime: new Date(v.entryTime).toISOString(), gatePassExpiresAt: v.gatePassExpiresAt ? new Date(v.gatePassExpiresAt).toISOString() : undefined }));
 }
