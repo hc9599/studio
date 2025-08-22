@@ -12,16 +12,12 @@ import { gatePassSchema } from '@/lib/types';
 
 // Helper function to find user by email
 function findUserByEmail(email: string): User | undefined {
-  const stmt = db.prepare('SELECT * FROM users WHERE email = ?');
-  const user = stmt.get(email) as User | undefined;
-  return user;
+  return db.users.find(u => u.email === email);
 }
 
 // Helper function to find user by ID
 function findUserById(id: string): User | undefined {
-    const stmt = db.prepare('SELECT * FROM users WHERE id = ?');
-    const user = stmt.get(id) as User | undefined;
-    return user;
+    return db.users.find(u => u.id === id);
 }
 
 const registerSchema = z.object({
@@ -48,8 +44,7 @@ export async function registerUser(prevState: any, formData: FormData) {
   const { name, email, flatNumber, role, password } = parsed.data;
 
   // Check if owner exists for the flat
-  const ownerStmt = db.prepare("SELECT * FROM users WHERE flatNumber = ? AND role = 'owner' AND status = 'approved'");
-  const ownerExists = ownerStmt.get(flatNumber);
+  const ownerExists = db.users.find(u => u.flatNumber === flatNumber && u.role === 'owner' && u.status === 'approved');
 
   if (role === 'owner' && ownerExists) {
      return {
@@ -59,8 +54,7 @@ export async function registerUser(prevState: any, formData: FormData) {
   }
 
   // Check if tenant exists for the flat
-  const tenantStmt = db.prepare("SELECT * FROM users WHERE flatNumber = ? AND role = 'tenant' AND status = 'approved'");
-  const tenantExists = tenantStmt.get(flatNumber);
+  const tenantExists = db.users.find(u => u.flatNumber === flatNumber && u.role === 'tenant' && u.status === 'approved');
 
   if (role === 'tenant' && tenantExists) {
      return {
@@ -79,11 +73,7 @@ export async function registerUser(prevState: any, formData: FormData) {
     status: 'pending',
   };
 
-  const insertStmt = db.prepare(`
-    INSERT INTO users (id, name, email, flatNumber, role, status, passwordHash)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `);
-  insertStmt.run(newUser.id, newUser.name, newUser.email, newUser.flatNumber, newUser.role, newUser.status, newUser.passwordHash);
+  db.users.create(newUser);
 
   revalidatePath('/admin');
   return {
@@ -141,14 +131,12 @@ export async function logout() {
 
 
 export async function approveRegistration(userId: string) {
-  const stmt = db.prepare("UPDATE users SET status = 'approved' WHERE id = ?");
-  stmt.run(userId);
+  db.users.update(userId, { status: 'approved' });
   revalidatePath('/admin');
 }
 
 export async function rejectRegistration(userId: string) {
-  const stmt = db.prepare("UPDATE users SET status = 'rejected' WHERE id = ?");
-  stmt.run(userId);
+  db.users.update(userId, { status: 'rejected' });
   revalidatePath('/admin');
 }
 
@@ -167,18 +155,14 @@ export async function logEntry(formData: FormData) {
         return { error: 'Validation failed' };
     }
 
-    const newVisit: Omit<Visit, 'entryTime'> & {entryTime: string} = {
+    const newVisit: Visit = {
         id: `visit-${Date.now()}`,
         ...parsed.data,
         entryTime: new Date().toISOString(),
         status: 'Inside',
         approvedBy: 'admin-001', // Assume admin is logging
     };
-    const stmt = db.prepare(`
-        INSERT INTO visits (id, visitorName, visitorType, flatNumber, entryTime, status, approvedBy)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
-    stmt.run(newVisit.id, newVisit.visitorName, newVisit.visitorType, newVisit.flatNumber, newVisit.entryTime, newVisit.status, newVisit.approvedBy);
+    db.visits.create(newVisit);
 
     revalidatePath('/admin');
     return { success: true };
@@ -186,8 +170,7 @@ export async function logEntry(formData: FormData) {
 
 
 export async function markAsExited(visitId: string) {
-  const stmt = db.prepare("UPDATE visits SET status = 'Exited', exitTime = ? WHERE id = ?");
-  stmt.run(new Date().toISOString(), visitId);
+  db.visits.update(visitId, { status: 'Exited', exitTime: new Date().toISOString() });
   revalidatePath('/admin');
   revalidatePath('/dashboard');
 }
@@ -208,8 +191,7 @@ export async function preApproveGuest(formData: FormData) {
 
     // This would be the logged-in user in a real app.
     // We'll fake it by finding the first approved tenant.
-    const residentStmt = db.prepare("SELECT * FROM users WHERE status = 'approved' AND role = 'tenant' LIMIT 1");
-    const resident = residentStmt.get() as User | undefined;
+    const resident = db.users.find(u => u.status === 'approved' && u.role === 'tenant');
     
     if (!resident) {
         return { error: 'Could not find a resident to approve for.' };
@@ -224,7 +206,7 @@ export async function preApproveGuest(formData: FormData) {
         const expiryTime = new Date();
         expiryTime.setHours(expiryTime.getHours() + 12);
 
-        const newVisit: Omit<Visit, 'entryTime' | 'gatePassExpiresAt'> & {entryTime: string, gatePassExpiresAt: string} = {
+        const newVisit: Visit = {
             id: `visit-${Date.now()}`,
             visitorName: parsed.data.guestName,
             visitorType: 'Guest',
@@ -235,12 +217,7 @@ export async function preApproveGuest(formData: FormData) {
             approvedBy: resident.id,
             gatePassExpiresAt: expiryTime.toISOString(),
         };
-        const stmt = db.prepare(`
-            INSERT INTO visits (id, visitorName, visitorType, flatNumber, entryTime, status, gatePassCode, approvedBy, gatePassExpiresAt)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `);
-        stmt.run(newVisit.id, newVisit.visitorName, newVisit.visitorType, newVisit.flatNumber, newVisit.entryTime, newVisit.status, newVisit.gatePassCode, newVisit.approvedBy, newVisit.gatePassExpiresAt);
-
+        db.visits.create(newVisit);
 
         revalidatePath('/dashboard');
         return { success: true, gatePass: { ...gatePassData, visitorName: parsed.data.guestName, flatNumber: resident.flatNumber, validUntil: expiryTime.toISOString() } };
@@ -276,23 +253,19 @@ export async function shareGatePassAction(input: z.infer<typeof shareGatePassSch
 
 
 export async function getPendingUsers(): Promise<User[]> {
-    const stmt = db.prepare("SELECT * FROM users WHERE status = 'pending'");
-    return stmt.all() as User[];
+    return db.users.filter(u => u.status === 'pending');
 }
 
 export async function getLiveVisits(): Promise<Visit[]> {
-    const stmt = db.prepare("SELECT * FROM visits WHERE status = 'Inside'");
-    const visits = stmt.all() as any[];
+    const visits = db.visits.filter(v => v.status === 'Inside');
     return visits.map(v => ({ ...v, entryTime: new Date(v.entryTime).toISOString() }));
 }
 
 export async function getMyVisits(): Promise<Visit[]> {
     // Faking logged in user 'user-002'
-    const residentStmt = db.prepare("SELECT * FROM users WHERE status = 'approved' AND role = 'tenant' LIMIT 1");
-    const resident = residentStmt.get() as User | undefined;
+    const resident = db.users.find(u => u.status === 'approved' && u.role === 'tenant');
     if (!resident) return [];
 
-    const stmt = db.prepare("SELECT * FROM visits WHERE approvedBy = ? ORDER BY entryTime DESC");
-    const visits = stmt.all(resident.id) as any[];
+    const visits = db.visits.filter(v => v.approvedBy === resident.id).sort((a, b) => new Date(b.entryTime).getTime() - new Date(a.entryTime).getTime());
     return visits.map(v => ({ ...v, entryTime: new Date(v.entryTime).toISOString(), gatePassExpiresAt: v.gatePassExpiresAt ? new Date(v.gatePassExpiresAt).toISOString() : undefined }));
 }
