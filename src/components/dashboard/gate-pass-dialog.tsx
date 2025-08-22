@@ -56,7 +56,16 @@ export function GatePassDialog({ gatePassData, setGatePassData }: GatePassDialog
         });
 
         if (result.success) {
-            toast({ title: 'Success', description: `Gate pass sent to ${contactInfo}` });
+            toast({ 
+                title: 'Share Simulation',
+                description: (
+                    <div className="mt-2 w-[340px] rounded-md bg-slate-950 p-4 text-white">
+                        <p className="text-sm font-medium">Message sent to {contactInfo} via {shareVia}:</p>
+                        <pre className="mt-2 w-full text-wrap text-xs">{result.message}</pre>
+                    </div>
+                ),
+                duration: 8000,
+             });
             setContactInfo('');
         } else {
             toast({ variant: 'destructive', title: 'Error', description: result.error || 'Failed to send gate pass.' });
@@ -102,7 +111,7 @@ export function GatePassDialog({ gatePassData, setGatePassData }: GatePassDialog
             Copy Details
         </Button>
         <div className="space-y-4 rounded-lg border p-4">
-            <h3 className="font-medium text-center">Share with Guest</h3>
+            <h3 className="font-medium text-center">Share with Guest (Simulation)</h3>
             <Tabs value={shareVia} onValueChange={setShareVia} className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="email"><Mail className="mr-2 h-4 w-4" />Email</TabsTrigger>

@@ -94,7 +94,7 @@ export async function registerUser(prevState: any, formData: FormData) {
 
 const loginSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(1, 'Password is required.'),
+  password: z.string().min(6, 'Password must be at least 6 characters.'),
 });
 
 export async function loginUser(prevState: any, formData: FormData) {
@@ -262,8 +262,8 @@ export async function shareGatePassAction(input: z.infer<typeof shareGatePassSch
     }
     
     try {
-        await shareGatePass(parsed.data);
-        return { success: true };
+        const response = await shareGatePass(parsed.data);
+        return { success: true, message: response.message };
     } catch (error) {
         console.error('Share Gate Pass AI Flow failed:', error);
         return { success: false, error: 'Failed to send gate pass.' };
