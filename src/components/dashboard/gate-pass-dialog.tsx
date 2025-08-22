@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { CheckCircle, QrCode, Clipboard } from 'lucide-react';
 import type { z } from 'zod';
-import type { gatePassSchema } from '@/ai/flows/gatePass';
+import type { gatePassSchema } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
 type GatePassData = z.infer<typeof gatePassSchema> & { visitorName: string; flatNumber: string };

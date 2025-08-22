@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { users, visits } from '@/lib/data';
 import type { Visit } from '@/lib/types';
-import { gatePassFlow } from '@/ai/flows/gatePass';
+import { generateGatePass } from '@/ai/flows/gatePass';
 
 const registerSchema = z.object({
   name: z.string().min(3, 'Name is too short'),
@@ -165,7 +165,7 @@ export async function preApproveGuest(formData: FormData) {
     const resident = users.find(u => u.status === 'approved' && u.role !== 'owner' && u.email.includes('jane'))!; 
 
     try {
-        const gatePassData = await gatePassFlow({
+        const gatePassData = await generateGatePass({
             ...parsed.data,
             flatNumber: resident.flatNumber,
         });

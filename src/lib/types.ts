@@ -1,4 +1,6 @@
 
+import { z } from 'zod';
+
 export type User = {
   id: string;
   name: string;
@@ -21,3 +23,21 @@ export type Visit = {
   gatePassCode?: string;
   approvedBy: string; // User ID
 };
+
+export const gatePassSchema = z.object({
+  displayInfo: z
+    .array(z.string())
+    .describe('Key information to display on the gate pass for the guard.'),
+  qrData: z.string().describe('A unique alphanumeric code for this pass.'),
+  instructions: z.string().describe('Brief instructions for the guest.'),
+});
+
+export type GatePassOutput = z.infer<typeof gatePassSchema>;
+
+export const gatePassInputSchema = z.object({
+  guestName: z.string(),
+  purpose: z.string(),
+  flatNumber: z.string(),
+});
+
+export type GatePassInput = z.infer<typeof gatePassInputSchema>;

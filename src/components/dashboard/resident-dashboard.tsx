@@ -38,7 +38,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { GatePassDialog } from './gate-pass-dialog';
-import type { gatePassSchema } from '@/ai/flows/gatePass';
+import type { gatePassSchema } from '@/lib/types';
 
 const preApproveSchema = z.object({
   guestName: z.string().min(1, 'Guest name is required'),

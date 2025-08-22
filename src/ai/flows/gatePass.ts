@@ -2,26 +2,12 @@
 'use server';
 
 import { ai } from '@/ai/genkit';
-import { z } from 'zod';
+import { gatePassInputSchema, gatePassSchema, type GatePassInput, type GatePassOutput } from '@/lib/types';
 
-export const gatePassSchema = z.object({
-  displayInfo: z
-    .array(z.string())
-    .describe('Key information to display on the gate pass for the guard.'),
-  qrData: z.string().describe('A unique alphanumeric code for this pass.'),
-  instructions: z.string().describe('Brief instructions for the guest.'),
-});
-
-export type GatePassOutput = z.infer<typeof gatePassSchema>;
-
-export const gatePassFlow = ai.defineFlow(
+const gatePassFlow = ai.defineFlow(
   {
     name: 'gatePassFlow',
-    inputSchema: z.object({
-      guestName: z.string(),
-      purpose: z.string(),
-      flatNumber: z.string(),
-    }),
+    inputSchema: gatePassInputSchema,
     outputSchema: gatePassSchema,
   },
   async ({ guestName, purpose, flatNumber }) => {
@@ -59,3 +45,7 @@ export const gatePassFlow = ai.defineFlow(
     return output;
   }
 );
+
+export async function generateGatePass(input: GatePassInput): Promise<GatePassOutput> {
+    return await gatePassFlow(input);
+}
