@@ -4,6 +4,15 @@ import type { User, Visit } from './types';
 
 const db = new Database('society.db');
 
+// Add gatePassExpiresAt column if it doesn't exist
+try {
+    db.prepare('SELECT gatePassExpiresAt FROM visits LIMIT 1').get();
+} catch (error) {
+    console.log('Adding gatePassExpiresAt column to visits table...');
+    db.exec('ALTER TABLE visits ADD COLUMN gatePassExpiresAt TEXT');
+}
+
+
 // Create tables if they don't exist
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
@@ -28,6 +37,7 @@ db.exec(`
     status TEXT NOT NULL,
     gatePassCode TEXT,
     approvedBy TEXT NOT NULL,
+    gatePassExpiresAt TEXT,
     FOREIGN KEY (approvedBy) REFERENCES users(id)
   );
 `);
@@ -55,10 +65,10 @@ if (userCount.count === 0) {
 const visitCount = db.prepare('SELECT COUNT(*) as count FROM visits').get() as { count: number };
 if (visitCount.count === 0) {
     const insertVisit = db.prepare(`
-        INSERT INTO visits (id, visitorName, visitorType, flatNumber, entryTime, exitTime, status, gatePassCode, approvedBy)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO visits (id, visitorName, visitorType, flatNumber, entryTime, exitTime, status, gatePassCode, approvedBy, gatePassExpiresAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
-    db.transaction((visits: Omit<Visit, 'entryTime' | 'exitTime' | 'status'> & { entryTime: Date, exitTime?: Date, status: string }[]) => {
+    db.transaction((visits: Omit<Visit, 'entryTime' | 'exitTime' | 'status' | 'gatePassExpiresAt'> & { entryTime: Date, exitTime?: Date, status: string, gatePassExpiresAt?: Date }[]) => {
         for (const visit of visits) {
             insertVisit.run(
                 visit.id,
@@ -69,14 +79,15 @@ if (visitCount.count === 0) {
                 visit.exitTime?.toISOString(),
                 visit.status,
                 visit.gatePassCode,
-                visit.approvedBy
+                visit.approvedBy,
+                visit.gatePassExpiresAt?.toISOString()
             );
         }
     })([
         { id: 'visit-001', visitorName: 'Alice', visitorType: 'Guest', flatNumber: 'B-203', entryTime: new Date(Date.now() - 2 * 3600000), exitTime: new Date(Date.now() - 3600000), status: 'Exited', gatePassCode: 'ABC12345', approvedBy: 'user-001' },
         { id: 'visit-002', visitorName: 'Zomato Delivery', visitorType: 'Delivery', flatNumber: 'C-401', entryTime: new Date(Date.now() - 1800000), status: 'Inside', approvedBy: 'user-002' },
         { id: 'visit-003', visitorName: 'Bob', visitorType: 'Guest', flatNumber: 'C-401', entryTime: new Date(Date.now() - 3600000), status: 'Inside', approvedBy: 'user-002' },
-        { id: 'visit-004', visitorName: 'Charlie', visitorType: 'Guest', flatNumber: 'B-203', entryTime: new Date(), status: 'Pre-Approved', gatePassCode: 'XYZ98765', approvedBy: 'user-001' },
+        { id: 'visit-004', visitorName: 'Charlie', visitorType: 'Guest', flatNumber: 'B-203', entryTime: new Date(), status: 'Pre-Approved', gatePassCode: 'XYZ98765', approvedBy: 'user-001', gatePassExpiresAt: new Date(Date.now() + 12 * 3600000) },
     ]);
 }
 

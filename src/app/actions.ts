@@ -221,7 +221,10 @@ export async function preApproveGuest(formData: FormData) {
             flatNumber: resident.flatNumber,
         });
 
-        const newVisit: Omit<Visit, 'entryTime'> & {entryTime: string} = {
+        const expiryTime = new Date();
+        expiryTime.setHours(expiryTime.getHours() + 12);
+
+        const newVisit: Omit<Visit, 'entryTime' | 'gatePassExpiresAt'> & {entryTime: string, gatePassExpiresAt: string} = {
             id: `visit-${Date.now()}`,
             visitorName: parsed.data.guestName,
             visitorType: 'Guest',
@@ -230,16 +233,17 @@ export async function preApproveGuest(formData: FormData) {
             status: 'Pre-Approved',
             gatePassCode: gatePassData.qrData,
             approvedBy: resident.id,
+            gatePassExpiresAt: expiryTime.toISOString(),
         };
         const stmt = db.prepare(`
-            INSERT INTO visits (id, visitorName, visitorType, flatNumber, entryTime, status, gatePassCode, approvedBy)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO visits (id, visitorName, visitorType, flatNumber, entryTime, status, gatePassCode, approvedBy, gatePassExpiresAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
-        stmt.run(newVisit.id, newVisit.visitorName, newVisit.visitorType, newVisit.flatNumber, newVisit.entryTime, newVisit.status, newVisit.gatePassCode, newVisit.approvedBy);
+        stmt.run(newVisit.id, newVisit.visitorName, newVisit.visitorType, newVisit.flatNumber, newVisit.entryTime, newVisit.status, newVisit.gatePassCode, newVisit.approvedBy, newVisit.gatePassExpiresAt);
 
 
         revalidatePath('/dashboard');
-        return { success: true, gatePass: { ...gatePassData, visitorName: parsed.data.guestName, flatNumber: resident.flatNumber } };
+        return { success: true, gatePass: { ...gatePassData, visitorName: parsed.data.guestName, flatNumber: resident.flatNumber, validUntil: expiryTime.toISOString() } };
     } catch(error) {
         console.error("AI Flow failed:", error);
         return { error: 'Failed to generate gate pass.' };
@@ -290,5 +294,5 @@ export async function getMyVisits(): Promise<Visit[]> {
 
     const stmt = db.prepare("SELECT * FROM visits WHERE approvedBy = ? ORDER BY entryTime DESC");
     const visits = stmt.all(resident.id) as any[];
-    return visits.map(v => ({ ...v, entryTime: new Date(v.entryTime) }));
+    return visits.map(v => ({ ...v, entryTime: new Date(v.entryTime), gatePassExpiresAt: v.gatePassExpiresAt ? new Date(v.gatePassExpiresAt) : undefined }));
 }

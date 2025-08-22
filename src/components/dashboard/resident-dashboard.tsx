@@ -90,6 +90,23 @@ export function ResidentDashboard() {
     setIsSubmitting(false);
   }
 
+  const handleShareClick = (visit: Visit) => {
+    if (!visit.gatePassCode) return;
+    
+    const passData: GatePassData = {
+        displayInfo: [
+            `Guest: ${visit.visitorName}`,
+            `Flat: ${visit.flatNumber}`
+        ],
+        qrData: visit.gatePassCode,
+        instructions: "Show this pass at the gate for entry.", // Generic instruction for re-share
+        visitorName: visit.visitorName,
+        flatNumber: visit.flatNumber,
+        validUntil: visit.gatePassExpiresAt?.toISOString(),
+    };
+    setGatePassData(passData);
+  }
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <GatePassDialog gatePassData={gatePassData} setGatePassData={setGatePassData} />
@@ -173,7 +190,7 @@ export function ResidentDashboard() {
                                         <TableCell>{visit.status !== "Pre-Approved" ? new Date(visit.entryTime).toLocaleTimeString() : '-'}</TableCell>
                                         <TableCell>
                                             {visit.gatePassCode ? (
-                                                <Button variant="ghost" size="sm">
+                                                <Button variant="ghost" size="sm" onClick={() => handleShareClick(visit)}>
                                                     <Ticket className="mr-2 h-4 w-4" />
                                                     {visit.gatePassCode}
                                                 </Button>

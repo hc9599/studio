@@ -22,6 +22,7 @@ export type Visit = {
   status: 'Inside' | 'Exited' | 'Pre-Approved';
   gatePassCode?: string;
   approvedBy: string; // User ID
+  gatePassExpiresAt?: Date;
 };
 
 export const gatePassSchema = z.object({
@@ -30,6 +31,7 @@ export const gatePassSchema = z.object({
     .describe('Key information to display on the gate pass for the guard.'),
   qrData: z.string().describe('A unique alphanumeric code for this pass.'),
   instructions: z.string().describe('Brief instructions for the guest.'),
+  validUntil: z.string().optional().describe('The expiry time of the gate pass.'),
 });
 
 export type GatePassOutput = z.infer<typeof gatePassSchema>;

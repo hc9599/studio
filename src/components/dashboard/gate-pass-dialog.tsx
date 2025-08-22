@@ -9,7 +9,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, QrCode, Clipboard, Mail, Phone, Send } from 'lucide-react';
+import { CheckCircle, QrCode, Clipboard, Mail, Phone, Send, Clock } from 'lucide-react';
 import type { z } from 'zod';
 import type { gatePassSchema } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -38,6 +38,7 @@ export function GatePassDialog({ gatePassData, setGatePassData }: GatePassDialog
             Flat: ${gatePassData.flatNumber}\n
             Code: ${gatePassData.qrData}\n
             Instructions: ${gatePassData.instructions}
+            ${gatePassData.validUntil ? `\nValid Until: ${new Date(gatePassData.validUntil).toLocaleString()}` : ''}
         `;
         navigator.clipboard.writeText(passDetails.trim());
         toast({ title: 'Copied to clipboard!' });
@@ -101,6 +102,12 @@ export function GatePassDialog({ gatePassData, setGatePassData }: GatePassDialog
                         <span className="font-semibold">{info.split(':')[1]}</span>
                     </div>
                 ))}
+                 {gatePassData?.validUntil && (
+                    <div className="flex justify-between items-center text-sm pt-2 border-t mt-2">
+                        <span className="font-medium text-muted-foreground flex items-center"><Clock className="h-4 w-4 mr-2" />Valid Until:</span>
+                        <span className="font-semibold">{new Date(gatePassData.validUntil).toLocaleString()}</span>
+                    </div>
+                 )}
             </div>
         </div>
         <p className="text-center text-sm text-muted-foreground italic">
