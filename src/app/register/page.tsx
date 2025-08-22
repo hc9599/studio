@@ -25,8 +25,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Home, KeyRound, Mail, User } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useEffect } from 'react';
-import { useFormState } from 'react-dom';
+import { useActionState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -44,9 +43,10 @@ export default function RegisterPage() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
 
-  const [formState, formAction] = useFormState(registerUser, {
+  const [formState, formAction] = useActionState(registerUser, {
     success: false,
     errors: {},
+    message: '',
   });
 
   const form = useForm<z.infer<typeof registerSchema>>({
