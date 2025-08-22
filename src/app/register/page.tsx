@@ -117,6 +117,14 @@ export default function RegisterPage() {
     )
   }
 
+  const onSubmit = (data: z.infer<typeof registerSchema>) => {
+    const formData = new FormData();
+    for (const key in data) {
+      formData.append(key, data[key as keyof typeof data]);
+    }
+    formAction(formData);
+  }
+
 
   return (
     <AuthFormWrapper
@@ -124,13 +132,7 @@ export default function RegisterPage() {
       description="Join the SocietyConnect community"
     >
       <Form {...form}>
-        <form onSubmit={form.handleSubmit((data) => {
-          const formData = new FormData();
-          Object.entries(data).forEach(([key, value]) => {
-            formData.append(key, value);
-          });
-          formAction(formData);
-        })} className="space-y-6">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <div className="space-y-4">
             <FormField
               control={form.control}
