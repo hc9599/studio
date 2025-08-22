@@ -80,7 +80,7 @@ export async function registerUser(prevState: any, formData: FormData) {
 
 const loginSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(6, 'Password is required.'),
+  password: z.string().min(1, 'Password is required.'),
 });
 
 export async function loginUser(formData: FormData) {
