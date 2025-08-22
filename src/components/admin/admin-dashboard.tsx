@@ -47,7 +47,7 @@ import { useToast } from '@/hooks/use-toast';
 import { users, visits } from '@/lib/data';
 import type { User, Visit } from '@/lib/types';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CheckCircle, PlusCircle, UserPlus, XCircle } from 'lucide-react';
+import { CheckCircle, PlusCircle, UserPlus, XCircle, UserCheck } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
