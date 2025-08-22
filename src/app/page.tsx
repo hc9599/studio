@@ -70,8 +70,6 @@ export default function LoginPage() {
     >
       <Form {...form}>
         <form
-          // The `onSubmit` from react-hook-form handles everything.
-          // No `action` prop is needed here.
           onSubmit={form.handleSubmit(onSubmit)}
           className="space-y-6"
         >
