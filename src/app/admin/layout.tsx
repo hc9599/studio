@@ -30,6 +30,7 @@ import {
   Building2,
 } from 'lucide-react';
 import Link from 'next/link';
+import { logout } from '@/app/actions';
 
 export default function AdminLayout({
   children,
@@ -85,10 +86,12 @@ export default function AdminLayout({
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                    <SidebarMenuButton href="/">
+                  <form action={logout} className="w-full">
+                    <SidebarMenuButton type="submit" className="w-full justify-start">
                         <LogOut className="h-4 w-4" />
                         Logout
                     </SidebarMenuButton>
+                  </form>
                 </SidebarMenuItem>
             </SidebarMenu>
           </SidebarFooter>
@@ -116,7 +119,9 @@ export default function AdminLayout({
                 <DropdownMenuItem>Settings</DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                    <Link href="/">Logout</Link>
+                  <form action={logout} className="w-full">
+                    <button type="submit" className="w-full text-left">Logout</button>
+                  </form>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

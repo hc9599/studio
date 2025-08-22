@@ -92,7 +92,7 @@ export async function registerUser(prevState: any, formData: FormData) {
 
 const loginSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(1, 'Password is required.'),
+  password: z.string().min(6, 'Password must be at least 6 characters.'),
 });
 
 export async function loginUser(formData: FormData) {
@@ -120,6 +120,12 @@ export async function loginUser(formData: FormData) {
     redirect('/dashboard');
   }
 }
+
+export async function logout() {
+  // In a real app, you'd clear session cookies here.
+  redirect('/');
+}
+
 
 export async function approveRegistration(userId: string) {
   const stmt = db.prepare("UPDATE users SET status = 'approved' WHERE id = ?");
