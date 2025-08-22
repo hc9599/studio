@@ -57,6 +57,8 @@ export default function RegisterPage() {
         description = 'This flat already has an approved owner.';
       if (error === 'flat_already_has_tenant')
         description = 'This flat already has an approved tenant.';
+      if (error === 'validation_failed')
+        description = 'Please check your inputs and try again.';
       toast({
         variant: 'destructive',
         title: 'Registration Failed',

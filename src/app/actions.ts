@@ -40,7 +40,7 @@ export async function registerUser(formData: FormData) {
     return;
   }
 
-  // Check if flat already has a tenant
+  // Check if flat already has a tenant (only block if registering a new tenant)
   const tenantExists = users.some(
     (u) => u.flatNumber === flatNumber && u.role === 'tenant' && u.status === 'approved'
   );
