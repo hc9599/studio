@@ -54,6 +54,14 @@ export default function LoginPage() {
     }
   }, [formState, toast]);
 
+  const onSubmit = (data: z.infer<typeof loginSchema>) => {
+    const formData = new FormData();
+    Object.entries(data).forEach(([key, value]) => {
+      formData.append(key, value);
+    });
+    formAction(formData);
+  };
+
   return (
     <AuthFormWrapper
       title="SocietyConnect"
@@ -61,14 +69,7 @@ export default function LoginPage() {
     >
       <Form {...form}>
         <form
-          onSubmit={form.handleSubmit(() => {
-            const formData = new FormData();
-            const a = form.getValues();
-            Object.keys(a).forEach((key) =>
-              formData.append(key, a[key as keyof typeof a])
-            );
-            formAction(formData);
-          })}
+          onSubmit={form.handleSubmit(onSubmit)}
           className="space-y-6"
         >
           <div className="space-y-4">
