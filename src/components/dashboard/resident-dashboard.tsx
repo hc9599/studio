@@ -54,8 +54,12 @@ export function ResidentDashboard() {
   
   const [myVisits, setMyVisits] = useState<Visit[]>([]);
 
-  useEffect(() => {
+  const fetchVisits = () => {
     getMyVisits().then(setMyVisits);
+  }
+
+  useEffect(() => {
+    fetchVisits();
   }, []);
 
   const form = useForm<z.infer<typeof preApproveSchema>>({
@@ -77,7 +81,7 @@ export function ResidentDashboard() {
     if (result.success && result.gatePass) {
         toast({ title: 'Success', description: 'Gate pass generated successfully!' });
         setGatePassData(result.gatePass as GatePassData);
-        getMyVisits().then(setMyVisits);
+        fetchVisits();
         form.reset();
     } else {
         toast({ variant: 'destructive', title: 'Error', description: result.error || 'Failed to generate gate pass.' });

@@ -7,6 +7,8 @@ import { z } from 'zod';
 import db from '@/lib/db';
 import type { User, Visit } from '@/lib/types';
 import { generateGatePass } from '@/ai/flows/gatePass';
+import { shareGatePass } from '@/ai/flows/shareGatePass';
+import { gatePassSchema } from '@/lib/types';
 
 // Helper function to find user by email
 function findUserByEmail(email: string): User | undefined {
@@ -92,25 +94,36 @@ export async function registerUser(prevState: any, formData: FormData) {
 
 const loginSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(6, 'Password must be at least 6 characters.'),
+  password: z.string().min(1, 'Password is required.'),
 });
 
-export async function loginUser(formData: FormData) {
+export async function loginUser(prevState: any, formData: FormData) {
   const data = Object.fromEntries(formData.entries());
   const parsed = loginSchema.safeParse(data);
 
   if (!parsed.success) {
-    redirect('/?error=validation_failed');
-    return;
+    return {
+        success: false,
+        errors: parsed.error.flatten().fieldErrors,
+    };
   }
 
   const { email, password } = parsed.data;
 
   const user = findUserByEmail(email);
 
-  if (!user || user.passwordHash !== password || user.status !== 'approved') {
-    redirect('/?error=invalid_credentials');
-    return;
+  if (!user || user.passwordHash !== password) {
+    return {
+        success: false,
+        message: 'Invalid email or password.',
+    };
+  }
+
+  if (user.status !== 'approved') {
+    return {
+        success: false,
+        message: 'Your account is not approved yet.',
+    };
   }
   
   // Fake session by redirecting. In a real app, use cookies/sessions.
@@ -233,6 +246,30 @@ export async function preApproveGuest(formData: FormData) {
     }
 }
 
+const shareGatePassSchema = z.object({
+  gatePass: gatePassSchema.extend({
+      visitorName: z.string(),
+      flatNumber: z.string(),
+  }),
+  shareMethod: z.enum(['email', 'sms']),
+  contactInfo: z.string(),
+});
+
+export async function shareGatePassAction(input: z.infer<typeof shareGatePassSchema>) {
+    const parsed = shareGatePassSchema.safeParse(input);
+    if (!parsed.success) {
+        return { success: false, error: 'Invalid input.' };
+    }
+    
+    try {
+        await shareGatePass(parsed.data);
+        return { success: true };
+    } catch (error) {
+        console.error('Share Gate Pass AI Flow failed:', error);
+        return { success: false, error: 'Failed to send gate pass.' };
+    }
+}
+
 
 export async function getPendingUsers(): Promise<User[]> {
     const stmt = db.prepare("SELECT * FROM users WHERE status = 'pending'");
@@ -247,7 +284,11 @@ export async function getLiveVisits(): Promise<Visit[]> {
 
 export async function getMyVisits(): Promise<Visit[]> {
     // Faking logged in user 'user-002'
-    const stmt = db.prepare("SELECT * FROM visits WHERE approvedBy = 'user-002'");
-    const visits = stmt.all() as any[];
+    const residentStmt = db.prepare("SELECT * FROM users WHERE status = 'approved' AND role = 'tenant' LIMIT 1");
+    const resident = residentStmt.get() as User | undefined;
+    if (!resident) return [];
+
+    const stmt = db.prepare("SELECT * FROM visits WHERE approvedBy = ? ORDER BY entryTime DESC");
+    const visits = stmt.all(resident.id) as any[];
     return visits.map(v => ({ ...v, entryTime: new Date(v.entryTime) }));
 }

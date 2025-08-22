@@ -9,10 +9,14 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, QrCode, Clipboard } from 'lucide-react';
+import { CheckCircle, QrCode, Clipboard, Mail, Phone, Send } from 'lucide-react';
 import type { z } from 'zod';
 import type { gatePassSchema } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { Input } from '../ui/input';
+import { useState } from 'react';
+import { shareGatePassAction } from '@/app/actions';
 
 type GatePassData = z.infer<typeof gatePassSchema> & { visitorName: string; flatNumber: string };
 
@@ -23,6 +27,9 @@ type GatePassDialogProps = {
 
 export function GatePassDialog({ gatePassData, setGatePassData }: GatePassDialogProps) {
     const { toast } = useToast();
+    const [shareVia, setShareVia] = useState('email');
+    const [contactInfo, setContactInfo] = useState('');
+    const [isSending, setIsSending] = useState(false);
 
     const handleCopy = () => {
         if(!gatePassData) return;
@@ -34,6 +41,27 @@ export function GatePassDialog({ gatePassData, setGatePassData }: GatePassDialog
         `;
         navigator.clipboard.writeText(passDetails.trim());
         toast({ title: 'Copied to clipboard!' });
+    }
+
+    const handleShare = async () => {
+        if(!gatePassData || !contactInfo) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Please enter contact information.' });
+            return;
+        }
+        setIsSending(true);
+        const result = await shareGatePassAction({
+            gatePass: gatePassData,
+            shareMethod: shareVia as 'email' | 'sms',
+            contactInfo: contactInfo,
+        });
+
+        if (result.success) {
+            toast({ title: 'Success', description: `Gate pass sent to ${contactInfo}` });
+            setContactInfo('');
+        } else {
+            toast({ variant: 'destructive', title: 'Error', description: result.error || 'Failed to send gate pass.' });
+        }
+        setIsSending(false);
     }
 
   return (
@@ -73,6 +101,28 @@ export function GatePassDialog({ gatePassData, setGatePassData }: GatePassDialog
             <Clipboard className="mr-2 h-4 w-4" />
             Copy Details
         </Button>
+        <div className="space-y-4 rounded-lg border p-4">
+            <h3 className="font-medium text-center">Share with Guest</h3>
+            <Tabs value={shareVia} onValueChange={setShareVia} className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="email"><Mail className="mr-2 h-4 w-4" />Email</TabsTrigger>
+                    <TabsTrigger value="sms"><Phone className="mr-2 h-4 w-4" />SMS</TabsTrigger>
+                </TabsList>
+                <TabsContent value="email" className="mt-4">
+                    <div className="flex gap-2">
+                        <Input type="email" placeholder="guest@example.com" value={contactInfo} onChange={e => setContactInfo(e.target.value)} />
+                        <Button onClick={handleShare} disabled={isSending}><Send className="h-4 w-4" /></Button>
+                    </div>
+                </TabsContent>
+                <TabsContent value="sms" className="mt-4">
+                     <div className="flex gap-2">
+                        <Input type="tel" placeholder="Phone number" value={contactInfo} onChange={e => setContactInfo(e.target.value)} />
+                        <Button onClick={handleShare} disabled={isSending}><Send className="h-4 w-4" /></Button>
+                    </div>
+                </TabsContent>
+            </Tabs>
+        </div>
+
       </DialogContent>
     </Dialog>
   );
