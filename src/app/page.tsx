@@ -13,9 +13,11 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { KeyRound, Mail } from 'lucide-react';
 import Link from 'next/link';
+import { useActionState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -27,6 +29,13 @@ const loginSchema = z.object({
 });
 
 export default function LoginPage() {
+  const { toast } = useToast();
+  const [formState, formAction, isPending] = useActionState(loginUser, {
+    success: false,
+    errors: {},
+    message: '',
+  });
+
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -35,13 +44,33 @@ export default function LoginPage() {
     },
   });
 
+  useEffect(() => {
+    if (!formState.success && formState.message) {
+      toast({
+        variant: 'destructive',
+        title: 'Login Failed',
+        description: formState.message,
+      });
+    }
+  }, [formState, toast]);
+
   return (
     <AuthFormWrapper
       title="SocietyConnect"
       description="Sign in to your account"
     >
       <Form {...form}>
-        <form action={loginUser} className="space-y-6">
+        <form
+          onSubmit={form.handleSubmit(() => {
+            const formData = new FormData();
+            const a = form.getValues();
+            Object.keys(a).forEach((key) =>
+              formData.append(key, a[key as keyof typeof a])
+            );
+            formAction(formData);
+          })}
+          className="space-y-6"
+        >
           <div className="space-y-4">
             <FormField
               control={form.control}
@@ -86,8 +115,8 @@ export default function LoginPage() {
               )}
             />
           </div>
-          <Button type="submit" className="w-full">
-            Login
+          <Button type="submit" className="w-full" disabled={isPending}>
+            {isPending ? 'Logging in...' : 'Login'}
           </Button>
         </form>
       </Form>
