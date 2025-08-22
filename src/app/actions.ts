@@ -9,7 +9,7 @@ import type { Visit } from '@/lib/types';
 import { generateGatePass } from '@/ai/flows/gatePass';
 
 const registerSchema = z.object({
-  name: z.string().min(3, 'Name must be at least 3 characters.'),
+  name: z.string().min(3, { message: 'Name must be at least 3 characters.' }),
   email: z.string().email({ message: 'Invalid email address.' }),
   flatNumber: z.string().min(1, { message: 'Flat number is required.' }),
   role: z.enum(['owner', 'tenant']),
@@ -75,7 +75,7 @@ export async function registerUser(prevState: any, formData: FormData) {
 
 const loginSchema = z.object({
   email: z.string().email(),
-  password: z.string(),
+  password: z.string().min(1, 'Password is required.'),
 });
 
 export async function loginUser(formData: FormData) {
